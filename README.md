@@ -56,6 +56,11 @@ WALLET_ADDRESS=your_wallet_address_here
 BOT_TOKEN=your_telegram_bot_token_here
 TID=your_telegram_userid_here
 ```
+5. Run the bot:
+```bash
+python -m bot.main
+```
+
 ## Finding Your Account ID
 
 Before setting up your environment, you'll need to find your Reya account ID:
