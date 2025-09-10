@@ -33,7 +33,10 @@ async def short_handler(message: Message,command: CommandObject,state: FSMContex
                 await message.answer("❌ Invalid amount. Please send a positive number (e.g., 100).")
                 return
         
-            await message.answer(f"open short postions for {ticker} with amount {amount}",reply_markup=confirm_keyboard("short"))
+            await message.answer(f"""Amount set to: {amount} {ticker}
+Please confirm opening a short position with this amount:
+✅ Confirm: yes
+❌ Cancel: no""",reply_markup=confirm_keyboard("short"))
             await state.update_data(ticker=ticker)
             await state.update_data(amount=amount) 
             await state.set_state(Short_States.waiting_for_confirmation)
@@ -44,7 +47,9 @@ async def short_handler(message: Message,command: CommandObject,state: FSMContex
                 await message.answer("❌ Invalid ticker. Try again (e.g., BTC).")
                 return
             
-            await message.answer(f"open short postions for {ticker} with default amount\n Please send the amount in USD (e.g., 100).")
+            await message.answer(f"""Ticker set to: {ticker}
+Now send the amount in tokens you want to short.
+Example: 500""")
             await state.update_data(ticker=ticker)
             await state.set_state(Short_States.waiting_for_amount)
             return
@@ -69,7 +74,9 @@ async def short_ticker(message: Message, state: FSMContext):
         return
     
     await state.update_data(ticker=ticker)
-    await message.answer(f"Ticker set to: {ticker}\nNow send the amount in USD (e.g., 100).")
+    await message.answer(f"""Ticker set to: {ticker}
+Now send the amount in tokens you want to short.
+Example: 500""")
     await state.set_state(Short_States.waiting_for_amount)
     return
 
@@ -84,7 +91,10 @@ async def short_amount(message: Message, state: FSMContext):
     await state.update_data(amount=amount)
     data = await state.get_data()
     ticker = data.get("ticker")
-    await message.answer(f"Amount set to: ${amount}\nPlease confirm opening a short position for {ticker} with amount ${amount} (yes/no).",reply_markup=confirm_keyboard("short"))
+    await message.answer(f"""Amount set to: {amount} {ticker}
+Please confirm opening a short position with this amount:
+✅ Confirm: yes
+❌ Cancel: no""",reply_markup=confirm_keyboard("short"))
     await state.set_state(Short_States.waiting_for_confirmation)
     return
 
@@ -93,7 +103,7 @@ async def short_confirmation(cb: CallbackQuery, state: FSMContext):
     confirmation = cb.data
     
     if confirmation not in ["short:confirm", "short:cancel"]:
-        await cb.message.answer("❌ Please respond with 'yes' or 'no'.")
+        await cb.message.answer("❌ Please respond with 'confirm' or 'cancel'.")
         return
     if confirmation == "short:cancel":
         await cb.message.answer("Operation cancelled. To start over, send /short.")
@@ -105,6 +115,9 @@ async def short_confirmation(cb: CallbackQuery, state: FSMContext):
     print(amount,ticker)
     # Here you would add the logic to open the short position using your trading API
     result = trade_on_market(order_base=-amount,market_name=ticker)
-    await cb.message.answer(f"✅ short position opened for {ticker} with amount ${amount}.\n result: {result}")
+    await cb.message.answer(f"""✅ Short position opened successfully!
+Ticker: {ticker}
+Amount: {amount} {ticker}
+{result}""")
     await state.clear()
     return

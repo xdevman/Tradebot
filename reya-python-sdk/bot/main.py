@@ -41,8 +41,36 @@ async def start_handler(message: types.Message):
 @admin_only
 async def start_handler(message: types.Message):
     
-    await message.answer("Available commands:\n /long <ticker> <amount> - Open a long position\n /short <ticker> <amount> - Open a short position\n /limit <ticker> <side> <amount> <price> - Place a limit order\n /account - View account details")
+    await message.answer("""
+📌 Bot Commands - ADMIN ONLY
 
+/long <ticker> <amount>  
+Open a long position on a token.  
+- <ticker>: Symbol of the token (e.g., OP, BTC)  
+- <amount>: Size in tokens to open the position (e.g., 500)  
+You can also just type /long and set ticker & amount step by step.
+
+/short <ticker> <amount>  
+Open a short position on a token.  
+- <ticker>: Symbol of the token (e.g., OP, BTC)  
+- <amount>: Size in tokens to open the position (e.g., 500)  
+You can also just type /short and set ticker & amount step by step.
+
+/limit <ticker> <side> <amount> <price>  
+Open a limit order (GTC) for a token.  
+- <ticker>: Symbol of the token (e.g., OP, BTC)  
+- <side>: 'long' or 'short'  
+- <amount>: Size in tokens  
+- <price>: Limit price to execute the order  
+You can also type /limit and fill each field step by step.
+
+/close <ticker>  
+Close an active position on a token.  
+- <ticker>: Symbol of the token you want to close.  
+This will automatically use the reverse size to close your position.
+
+⚠️ Only admins can use these commands.
+""")
 # Run the bot
 async def main() -> None:
     bot = Bot(token=TOKEN)

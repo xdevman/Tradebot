@@ -13,6 +13,21 @@ from bot.utils.validators import admin_only, validate_ticker
 
 limit_router = Router()
 
+LIMIT_MESSAGES = {
+    "invalid_format": "❌ Invalid command format!\nOne-liner format:\n/limit <TICKER> <SIDE> <AMOUNT> <PRICE>\nExample: /limit OP long 100 0.80\nOr type /limit to set step by step.",
+    "send_ticker": "📌 Please send the ticker symbol of the token you want to trade (e.g., BTC, OP, ETH).",
+    "invalid_ticker": "❌ Invalid ticker symbol. Try again (e.g., BTC, OP, ETH).",
+    "send_side": "Ticker set to: {ticker}\nNow set the side: long or short.",
+    "invalid_side": "❌ Invalid side. Please send 'long' or 'short'.",
+    "send_amount": "Side set to: {side}\nNow send the amount in tokens (e.g., 100).",
+    "invalid_amount": "❌ Invalid amount. Please send a positive number (e.g., 100).",
+    "send_price": "Amount set to: {amount}\nNow send the price (e.g., 0.80).",
+    "invalid_price": "❌ Invalid price. Please send a positive number (e.g., 0.80).",
+    "confirm_order": "Price set to: {price}\nPlease confirm opening a {side} limit order for {ticker} with amount {amount} tokens at {price} (yes/no).",
+    "cancelled": "Operation cancelled. To start over, send /limit.",
+    "opened": "✅ {side} limit order opened successfully!\nTicker: {ticker}\nAmount: {amount} tokens\nPrice: {price}\nResult: {result}"
+}
+
 
 @limit_router.message(Command("limit"),StateFilter("*"))
 @admin_only
@@ -31,7 +46,7 @@ async def limit_handler(message: Message, command: CommandObject, state: FSMCont
             if not ticker:
                 await message.answer("❌ Invalid ticker. Try again (e.g., BTC).")
                 return
-            await message.answer(f"open limit order for {ticker} on {side} side with amount {amount} at price {price}\nPlease confirm (yes/no).",reply_markup=confirm_keyboard("limit"))
+            await message.answer(f"Please confirm opening a {side} limit order for {ticker} with amount {amount} tokens at {price}",reply_markup=confirm_keyboard("limit"))
             await state.update_data(ticker=ticker)
             await state.update_data(side=side)
             await state.update_data(amount=amount)
@@ -47,7 +62,7 @@ async def limit_handler(message: Message, command: CommandObject, state: FSMCont
             if not ticker:
                 await message.answer("❌ Invalid ticker. Try again (e.g., BTC).")
                 return
-            await message.answer(f"open limit order for {ticker} on {side} side with  {amount} at default price\n Please send the price (e.g., 0.80).")
+            await message.answer(f"Now send the price (e.g., 0.80).")
             await state.update_data(ticker=ticker)
             await state.update_data(side=side)
             await state.update_data(amount=amount)
@@ -60,7 +75,7 @@ async def limit_handler(message: Message, command: CommandObject, state: FSMCont
             if not ticker:
                 await message.answer("❌ Invalid ticker. Try again (e.g., BTC).")
                 return
-            await message.answer(f"open limit order for {ticker} on {side} with default amount at default price\n Please send the amount in token size (e.g., 100).")
+            await message.answer(f"Now send the amount in tokens (e.g., 100).")
             await state.update_data(ticker=ticker)
             await state.update_data(side=side)
             await state.set_state(limit_States.waiting_for_amount)
@@ -70,7 +85,7 @@ async def limit_handler(message: Message, command: CommandObject, state: FSMCont
             if not ticker:
                 await message.answer("❌ Invalid ticker. Try again (e.g., BTC).")
                 return
-            await message.answer(f"open limit order for {ticker} on default side with default amount at default price\n Please set long/short:")
+            await message.answer(f"Ticker set to: {ticker}\nNow set the side: long or short.")
             await state.update_data(ticker=ticker)
             await state.set_state(limit_States.waiting_for_side)
             return
@@ -108,7 +123,7 @@ async def limit_ticker(message: Message, state: FSMContext):
         await message.answer("❌ Invalid ticker. Try again (e.g., BTC).")
         return
     await state.update_data(ticker=ticker)
-    await message.answer(f"Ticker set to: {ticker}\nNow set long/short:")
+    await message.answer(f"Ticker set to: {ticker}\nNow set the side: long or short.")
     await state.set_state(limit_States.waiting_for_side)
     return
 
@@ -125,7 +140,7 @@ async def limit_side(message: Message, state: FSMContext):
     await state.update_data(side=side)
     data = await state.get_data()
     ticker = data.get("ticker")
-    await message.answer(f"side set to: ${side}\nsend the amount in token size (e.g., 100).")
+    await message.answer(f"Side set to: {side}\nNow send the amount in tokens (e.g., 100).")
     await state.set_state(limit_States.waiting_for_amount)
     return
 
@@ -139,7 +154,7 @@ async def limit_amount(message: Message, state: FSMContext):
         await message.answer("❌ Invalid amount. Please send a positive number (e.g., 100).")
         return
     await state.update_data(amount=amount)    
-    await message.answer(f"Amount set to: ${amount}\nPlease now send the price (e.g., 0.80).")
+    await message.answer(f"Amount set to: {amount}\nNow send the price (e.g., 0.80).")
     await state.set_state(limit_States.waiting_for_price)
     return
 
@@ -157,7 +172,7 @@ async def limit_amount(message: Message, state: FSMContext):
     ticker = data.get("ticker")
     amount = data.get("amount")
     side = data.get("side")
-    await message.answer(f"price set to: ${price}\nPlease confirm opening a {side} limit orderfor {ticker} with amount ${amount} token (yes/no).",reply_markup=confirm_keyboard("limit"))
+    await message.answer(f"Price set to: {price}\nPlease confirm opening a {side} limit order for {ticker} with amount {amount} tokens at {price}.",reply_markup=confirm_keyboard("limit"))
     await state.set_state(limit_States.waiting_for_confirmation)
     return
 
@@ -170,7 +185,7 @@ async def limit_confirmation(cb: CallbackQuery, state: FSMContext):
         await cb.message.answer("❌ Please respond with 'yes' or 'no'.")
         return
     if confirmation == "cancel":
-        await cb.message.answer("Operation cancelled. To start over, send /long.")
+        await cb.message.answer("Operation cancelled. To start over, send /limit.")
         await state.clear()
         return
     client = await create_client()
@@ -186,6 +201,6 @@ async def limit_confirmation(cb: CallbackQuery, state: FSMContext):
     result =  await gtc_limit_orders(client=client, market_name=ticker, is_buy=is_buy, price=str(price), size=str(amount))
     print(result)
     # Here you would add the logic to open the limit order using your trading API
-    await cb.message.answer(f"✅ {side} limit order opened for {ticker} at {price} price with amount ${amount}.")
+    await cb.message.answer(f"✅ {side} limit order opened successfully!\nTicker: {ticker}\nAmount: {amount} tokens\nPrice: {price}\n{result}")
     await state.clear()
     return

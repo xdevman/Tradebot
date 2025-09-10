@@ -32,7 +32,10 @@ async def long_handler(message: Message,command: CommandObject,state: FSMContext
                 await message.answer("❌ Invalid amount. Please send a positive number (e.g., 100).")
                 return
         
-            await message.answer(f"open long postions for {ticker} with amount {amount}",reply_markup=confirm_keyboard("long"))
+            await message.answer(f"""Amount set to: {amount} {ticker}
+Please confirm opening a long position with this amount:
+✅ Confirm: yes
+❌ Cancel: no""",reply_markup=confirm_keyboard("long"))
             await state.update_data(ticker=ticker)
             await state.update_data(amount=amount) 
             await state.set_state(Long_States.waiting_for_confirmation)
@@ -43,19 +46,23 @@ async def long_handler(message: Message,command: CommandObject,state: FSMContext
                 await message.answer("❌ Invalid ticker. Try again (e.g., BTC).")
                 return
             
-            await message.answer(f"open long postions for {ticker} with default amount\n Please send the amount in USD (e.g., 100).")
+            await message.answer(f"""Ticker set to: {ticker}
+Now send the amount in tokens you want to long.
+Example: 500""")
             await state.update_data(ticker=ticker)
             await state.set_state(Long_States.waiting_for_amount)
             return
         else:  # if the agrument was more than 2 
             await message.answer("""
-Open a long using a one-liner in the following format 
-/long <ticker> <amount of margin to use>  e.g. long OP 100
-Otherwise use just /long to open a position""")
+❌ Invalid command format!
+To open a long position in one line:
+  /long <TICKER> <AMOUNT_IN_TOKENS>
+Example: /long OP 500
+Or just type /long to set ticker and amount step by step.""")
             return
     else:
         
-        await message.answer("📌 Send the ticker symbol (e.g., BTC).")
+        await message.answer("📌 Please send the ticker symbol of the token you want to long (e.g., BTC, OP, ETH).")
         await state.set_state(Long_States.waiting_for_ticker)
 
         return
@@ -64,11 +71,11 @@ Otherwise use just /long to open a position""")
 async def long_ticker(message: Message, state: FSMContext):
     ticker = validate_ticker(message.text.strip())
     if not ticker:
-        await message.answer("❌ Invalid ticker. Try again (e.g., BTC).")
+        await message.answer("❌ Invalid ticker symbol. Try again (e.g., BTC, OP, ETH).")
         return
     
     await state.update_data(ticker=ticker)
-    await message.answer(f"Ticker set to: {ticker}\nNow send the amount in USD (e.g., 100).")
+    await message.answer(f"Ticker set to: {ticker}\nNow send the amount in tokens you want to long.\nExample: 5")
     await state.set_state(Long_States.waiting_for_amount)
     return
 
@@ -83,7 +90,7 @@ async def long_amount(message: Message, state: FSMContext):
     await state.update_data(amount=amount)
     data = await state.get_data()
     ticker = data.get("ticker")
-    await message.answer(f"Amount set to: ${amount}\nPlease confirm opening a long position for {ticker} with amount ${amount} (yes/no).",reply_markup=confirm_keyboard("long"))
+    await message.answer(f"Amount set to: {amount} {ticker}\nPlease confirm opening a long position with this amount.",reply_markup=confirm_keyboard("long"))
     await state.set_state(Long_States.waiting_for_confirmation)
     return
 
@@ -92,7 +99,7 @@ async def long_confirmation(cb: CallbackQuery, state: FSMContext):
     confirmation = cb.data
     
     if confirmation not in ["long:confirm", "long:cancel"]:
-        await cb.message.answer("❌ Please respond with 'yes' or 'no'.")
+        await cb.message.answer("❌ Please respond with 'confirm' or 'cancel'.")
         return
     if confirmation == "long:cancel":
         await cb.message.answer("Operation cancelled. To start over, send /long.")
@@ -104,6 +111,6 @@ async def long_confirmation(cb: CallbackQuery, state: FSMContext):
     print(amount,ticker)
     # Here you would add the logic to open the long position using your trading API
     result = trade_on_market(order_base=amount,market_name=ticker)
-    await cb.message.answer(f"✅ Long position opened for {ticker} with amount ${amount}.\n result: {result}")
+    await cb.message.answer(f"✅ Long position opened successfully!\nTicker: {ticker}\nAmount: {amount} {ticker}\n{result}")
     await state.clear()
     return
