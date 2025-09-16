@@ -13,22 +13,6 @@ from bot.utils.validators import admin_only, validate_ticker
 
 limit_router = Router()
 
-LIMIT_MESSAGES = {
-    "invalid_format": "❌ Invalid command format!\nOne-liner format:\n/limit <TICKER> <SIDE> <AMOUNT> <PRICE>\nExample: /limit OP long 100 0.80\nOr type /limit to set step by step.",
-    "send_ticker": "📌 Please send the ticker symbol of the token you want to trade (e.g., BTC, OP, ETH).",
-    "invalid_ticker": "❌ Invalid ticker symbol. Try again (e.g., BTC, OP, ETH).",
-    "send_side": "Ticker set to: {ticker}\nNow set the side: long or short.",
-    "invalid_side": "❌ Invalid side. Please send 'long' or 'short'.",
-    "send_amount": "Side set to: {side}\nNow send the amount in tokens (e.g., 100).",
-    "invalid_amount": "❌ Invalid amount. Please send a positive number (e.g., 100).",
-    "send_price": "Amount set to: {amount}\nNow send the price (e.g., 0.80).",
-    "invalid_price": "❌ Invalid price. Please send a positive number (e.g., 0.80).",
-    "confirm_order": "Price set to: {price}\nPlease confirm opening a {side} limit order for {ticker} with amount {amount} tokens at {price} (yes/no).",
-    "cancelled": "Operation cancelled. To start over, send /limit.",
-    "opened": "✅ {side} limit order opened successfully!\nTicker: {ticker}\nAmount: {amount} tokens\nPrice: {price}\nResult: {result}"
-}
-
-
 @limit_router.message(Command("limit"),StateFilter("*"))
 @admin_only
 async def limit_handler(message: Message, command: CommandObject, state: FSMContext):
@@ -184,7 +168,7 @@ async def limit_confirmation(cb: CallbackQuery, state: FSMContext):
     if confirmation not in ["limit:confirm", "limit:cancel"]:
         await cb.message.answer("❌ Please respond with 'yes' or 'no'.")
         return
-    if confirmation == "cancel":
+    if confirmation == "limit:cancel":
         await cb.message.answer("Operation cancelled. To start over, send /limit.")
         await state.clear()
         return
