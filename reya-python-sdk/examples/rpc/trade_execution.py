@@ -20,7 +20,7 @@ def main():
     # Load configuration
     config = get_config()
 
-    def trade_on_sol(order_base,market_name):
+    def trade_on_sol(order_base):
         """
         Executes a trade on the SOL market.
 
@@ -30,13 +30,7 @@ def main():
         """
 
         # Retrieve SOL market ID
-        # market_id = MarketIds.SOL.value
-
-        try:
-            market_id = getattr(MarketIds, market_name.upper()).value
-            print(market_id)
-        except AttributeError:
-            raise ValueError(f"❌ Invalid market name: {market_name}")
+        market_id = MarketIds.SOL.value
 
         # Define price limit: 0 for shorts, high limit (1e9) for longs
         price_limit = 0 if order_base < 0 else 1_000_000_000

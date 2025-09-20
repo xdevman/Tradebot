@@ -4,8 +4,8 @@ from aiogram import types
 from aiogram.filters import Command,CommandObject,StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from bot.core.reya.positions import create_client
-from bot.core.reya.trade_exec import trade_on_market
+from bot.core.reya.positions import create_client,ioc_market_orders
+
 from bot.keyboards.inline_confirm import confirm_keyboard
 from bot.states.trade_states import Long_States
 from bot.utils.validators import admin_only, validate_amount, validate_ticker
@@ -108,9 +108,10 @@ async def long_confirmation(cb: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     ticker = data.get("ticker")
     amount = data.get("amount")
-    print(amount,ticker)
+    client = await create_client()
     # Here you would add the logic to open the long position using your trading API
-    result = trade_on_market(order_base=amount,market_name=ticker)
+    result = await ioc_market_orders(client=client,order_base=str(amount),market_name=ticker,is_buy=True)
     await cb.message.answer(f"✅ Long position opened successfully!\nTicker: {ticker}\nAmount: {amount} {ticker}\n{result}")
     await state.clear()
+    await client.close()
     return

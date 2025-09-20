@@ -1,20 +1,36 @@
 #!/usr/bin/env python3
+"""
+Comprehensive example of creating different types of orders with the Reya Trading API.
 
+This example demonstrates all supported order types:
+- IOC (Immediate or Cancel) Market Orders
+- GTC (Good Till Cancel) Limit Orders
+- Stop Loss (SL) Orders
+- Take Profit (TP) Orders
+- Order Cancellation
+
+Before running this example, ensure you have a .env file with the following variables:
+- PRIVATE_KEY: Your Ethereum private key
+- ACCOUNT_ID: Your Reya account ID
+- CHAIN_ID: The chain ID (1729 for mainnet, 89346162 for testnet)
+- API_URL: The API URL (optional, defaults based on chain ID)
+"""
 import asyncio
 import logging
 import os
 
 from dotenv import load_dotenv
 
+from sdk.open_api.models.order_type import OrderType
+from sdk.open_api.models.time_in_force import TimeInForce
 from sdk.reya_rest_api import ReyaTradingClient
-from sdk.reya_rest_api.config import get_config
-from sdk.reya_rest_api.constants.enums import Limit, LimitOrderType, TimeInForce
-from sdk.reya_rpc.types import MarketIds
+from sdk.reya_rest_api.models.orders import LimitOrderParameters, TriggerOrderParameters
+from sdk.reya_rpc import MarketIds
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # Create a logger for this module
-logger = logging.getLogger("reya.positions")
+logger = logging.getLogger("reya.order_entry")
 
 
 def print_separator(title: str):
@@ -25,156 +41,132 @@ def print_separator(title: str):
 
 
 def handle_order_response(order_type: str, response):
-    """Handle and log order response."""
-    if hasattr(response, "raw_response"):
-        raw = response.raw_response
-        if raw.get("success", False):
-            logger.info(f"✅ {order_type} order created successfully!")
-            if "orderId" in raw:
-                logger.info(f"   Order ID: {raw['orderId']}")
-            if "transactionHash" in raw:
-                logger.info(f"   Transaction Hash: {raw['transactionHash']}")
-        else:
-            logger.error(f"❌ {order_type} order failed:")
-            logger.error(f"   Full error response: {raw}")
-            if isinstance(raw, dict):
-                logger.error(f"   Error message: {raw.get('error', 'Unknown error')}")
-                if "details" in raw:
-                    logger.error(f"   Error details: {raw['details']}")
-                if "code" in raw:
-                    logger.error(f"   Error code: {raw['code']}")
-    else:
-        logger.info(f"📝 {order_type} response: {response}")
+    logger.info(f"✅ {order_type} order created successfully!")
+    if response.order_id:
+        logger.info(f"   Order ID: {response.order_id}")
+    logger.info(f"   Status: {response.status}")
+
     return response
 
+
+async def ioc_market_orders(client: ReyaTradingClient,market_name: str,is_buy: bool,order_base: str):
+    """Test IOC (Immediate or Cancel) limit orders asynchronously."""
+    print_separator("running IOC MARKET ORDERS")
+    price_limit = "1000000000" if is_buy else "0"
+    print(price_limit)
+    try:
+        market_id = getattr(MarketIds, market_name.upper()).value
+        print(market_id)
+    except AttributeError:
+        raise ValueError(f"❌ Invalid market name: {market_name}")
+    
+    market_name = str(market_name+"RUSDPERP").upper()
+    print(market_name)
+    # IOC MARKET ORDER
+    logger.info("Creating IOC MARKET ORDER...")
+    response = await client.create_limit_order(
+        LimitOrderParameters(
+            symbol=market_name,
+            is_buy=is_buy,
+            limit_px=price_limit,
+            qty=order_base,
+            time_in_force=TimeInForce.IOC,
+            reduce_only=False,
+        )
+    )
+
+    result = handle_order_response("IOC MARKET ORDER", response)
+    return result
 
 
 async def gtc_limit_orders(client: ReyaTradingClient,market_name: str, is_buy: bool, price: str, size: str):
     """Test GTC (Good Till Cancel) limit orders asynchronously."""
     print_separator("TESTING GTC LIMIT ORDERS")
     
-    # Set order type
-    order_type = LimitOrderType(limit=Limit(time_in_force=TimeInForce.GTC))
-    try:
-        market_id = getattr(MarketIds, market_name.upper()).value
-        print(market_id)
-    except AttributeError:
-        raise ValueError(f"❌ Invalid market name: {market_name}")
-    # Return order IDs for potential cancellation testing
-    buy_order_id = None
-    sell_order_id = None
-
-    if is_buy:
-        # buy limit order
-        logger.info("Creating GTC limit buy order...")
-        response = await client.create_limit_order(
-            market_id=market_id,
+    market_name = str(market_name+"RUSDPERP").upper()
+    
+    # Test buy limit order
+    logger.info("Creating GTC limit order...")
+    response = await client.create_limit_order(
+        LimitOrderParameters(
+            symbol=market_name,
             is_buy=is_buy,
-            price=price,
-            size=size,
-            order_type=order_type,
+            limit_px=price,
+            qty=size,
+            time_in_force=TimeInForce.GTC,
         )
-        buy_order_response = handle_order_response("GTC Limit Buy", response)
-        
-        if hasattr(buy_order_response, "raw_response") and "orderId" in buy_order_response.raw_response:
-            buy_order_id = buy_order_response.raw_response["orderId"]
+    )
+    order_response = handle_order_response("GTC Limit", response)
 
-    else:
-        # sell limit order
-        logger.info("Creating GTC limit sell order...")
-        response = await client.create_limit_order(
-            market_id=market_id,
-            is_buy=is_buy,
-            price=price,
-            size=size,
-            order_type=order_type,
-        )
-        sell_order_response = handle_order_response("GTC Limit Sell", response)
-
-        if hasattr(sell_order_response, "raw_response") and "orderId" in sell_order_response.raw_response:
-            sell_order_id = sell_order_response.raw_response["orderId"]
+    
+    return order_response.order_id
 
 
-    return buy_order_id, sell_order_id
-
-
-
-async def stop_loss_orders(client: ReyaTradingClient,market_id: int,is_buy: bool,trigger_price: str):
-    """Stop Loss orders asynchronously."""
+async def run_stop_loss_orders_test(client: ReyaTradingClient):
+    """Test Stop Loss orders asynchronously."""
     print_separator("TESTING STOP LOSS ORDERS")
 
-    # Return order IDs
-    long_sl_id = None
-    short_sl_id = None
-
-    if is_buy: 
-        # stop loss for long position (sell when price drops)
-        logger.info("Creating stop loss for long position...")
-        response = await client.create_stop_loss_order(
-            market_id=market_id,
-            is_buy=is_buy,
-            trigger_price=trigger_price,
+    # Test stop loss for long position (sell when price drops)
+    logger.info("Creating stop loss for long position...")
+    response = await client.create_trigger_order(
+        TriggerOrderParameters(
+            symbol="ETHRUSDPERP",
+            is_buy=False,
+            trigger_px="1000",
+            trigger_type=OrderType.SL,
         )
-        long_sl_response = handle_order_response("Stop Loss (Long Position)", response)
-        
-        if hasattr(long_sl_response, "raw_response") and "orderId" in long_sl_response.raw_response:
-            long_sl_id = long_sl_response.raw_response["orderId"]
-    else:
-        # stop loss for short position (buy when price rises)
-        logger.info("Creating stop loss for short position...")
-        response = await client.create_stop_loss_order(
-            market_id=market_id,
-            is_buy=is_buy,
-            trigger_price=trigger_price,
+    )
+    long_sl_response = handle_order_response("Stop Loss (Long Position)", response)
+
+    # Test stop loss for short position (buy when price rises)
+    logger.info("Creating stop loss for short position...")
+    response = await client.create_trigger_order(
+        TriggerOrderParameters(
+            symbol="ETHRUSDPERP",
+            is_buy=True,
+            trigger_px="9000",
+            trigger_type=OrderType.SL,
         )
-        short_sl_response = handle_order_response("Stop Loss (Short Position)", response)
+    )
+    short_sl_response = handle_order_response("Stop Loss (Short Position)", response)
 
-        if hasattr(short_sl_response, "raw_response") and "orderId" in short_sl_response.raw_response:
-            short_sl_id = short_sl_response.raw_response["orderId"]
-
-
-    return long_sl_id, short_sl_id
+    return long_sl_response.order_id, short_sl_response.order_id
 
 
-async def take_profit_orders(client: ReyaTradingClient,market_id: int,is_buy: bool,trigger_price: str):
-    """Take Profit orders asynchronously."""
+async def run_take_profit_orders_test(client: ReyaTradingClient):
+    """Test Take Profit orders asynchronously."""
     print_separator("TESTING TAKE PROFIT ORDERS")
 
-    # Return order IDs
-    long_tp_id = None
-    short_tp_id = None
-    if not is_buy:
-        # take profit for long position (sell when price rises)
-        logger.info("Creating take profit for long position...")
-        response = await client.create_take_profit_order(
-            market_id=market_id,
-            is_buy=is_buy,
-            trigger_price=trigger_price,
+    # Test take profit for long position (sell when price rises)
+    logger.info("Creating take profit for long position...")
+    response = await client.create_trigger_order(
+        TriggerOrderParameters(
+            symbol="ETHRUSDPERP",
+            is_buy=False,
+            trigger_px="10000",
+            trigger_type=OrderType.TP,
         )
-        long_tp_response = handle_order_response("Take Profit (Long Position)", response)
+    )
+    long_tp_response = handle_order_response("Take Profit (Long Position)", response)
 
-        if hasattr(long_tp_response, "raw_response") and "orderId" in long_tp_response.raw_response:
-            long_tp_id = long_tp_response.raw_response["orderId"]
-    else:
-        # take profit for short position (buy when price drops)
-        logger.info("Creating take profit for short position...")
-        response = await client.create_take_profit_order(
-             market_id=market_id,
-            is_buy=is_buy,
-            trigger_price=trigger_price,
+    # Test take profit for short position (buy when price drops)
+    logger.info("Creating take profit for short position...")
+    response = await client.create_trigger_order(
+        TriggerOrderParameters(
+            symbol="ETHRUSDPERP",
+            is_buy=True,
+            trigger_px="1500",
+            trigger_type=OrderType.TP,
         )
-        short_tp_response = handle_order_response("Take Profit (Short Position)", response)
+    )
+    short_tp_response = handle_order_response("Take Profit (Short Position)", response)
 
-        if hasattr(short_tp_response, "raw_response") and "orderId" in short_tp_response.raw_response:
-            short_tp_id = short_tp_response.raw_response["orderId"]
-
-
-    return long_tp_id, short_tp_id
+    return long_tp_response.order_id, short_tp_response.order_id
 
 
-async def order_cancellation(client: ReyaTradingClient, order_ids: list):
-    """order cancellation asynchronously."""
-    print_separator("ORDER CANCELLATION")
+async def run_order_cancellation_test(client: ReyaTradingClient, order_ids: list):
+    """Test order cancellation asynchronously."""
+    print_separator("TESTING ORDER CANCELLATION")
 
     valid_order_ids = [oid for oid in order_ids if oid is not None]
 
@@ -190,14 +182,14 @@ async def order_cancellation(client: ReyaTradingClient, order_ids: list):
     handle_order_response("Order Cancellation", response)
 
 
-async def test_order_retrieval(client: ReyaTradingClient):
+async def run_order_retrieval_test(client: ReyaTradingClient):
     """Test retrieving orders and positions asynchronously."""
-    print_separator("ORDER AND POSITION RETRIEVAL")
+    print_separator("TESTING ORDER AND POSITION RETRIEVAL")
 
     # Get trades
     logger.info("Retrieving trades...")
-    trades = await client.get_trades()
-    logger.info(f"📊 Found {len(trades)} trades")
+    trades = await client.wallet.get_wallet_perp_executions(address=client.wallet_address or "")
+    logger.info(f"📊 Found {len(trades.data)} trades")
 
     # Get open orders
     logger.info("Retrieving open orders...")
@@ -209,10 +201,9 @@ async def test_order_retrieval(client: ReyaTradingClient):
     positions = await client.get_positions()
     logger.info(f"📊 Found {len(positions)} positions")
 
-
-async def create_client():
-    """Run comprehensive order asynchronously."""
-    print_separator("REYA TRADING API - CREATE CLIENT")
+async def create_client(): 
+    """Run comprehensive order testing asynchronously."""
+    print_separator("REYA TRADING API - COMPREHENSIVE ORDER ENTRY EXAMPLES")
     logger.info("🚀 Starting comprehensive order testing...")
 
     # Load environment variables
@@ -227,53 +218,76 @@ async def create_client():
         logger.error("Please check your .env file and ensure all required variables are set.")
         return
 
-    # Create a client instance
+    # Create a client instance with proper session management
+    # async with ReyaTradingClient() as client:
+    #     logger.info("✅ Client initialized successfully")
+    #     logger.info(f"   Account ID: {client.config.account_id}")
+    #     logger.info(f"   Chain ID: {client.config.chain_id}")
+    #     logger.info(f"   API URL: {client.config.api_url}")
+    #     logger.info(f"   Wallet: {client.wallet_address}")
     client = ReyaTradingClient()
-    logger.info("✅ Client initialized successfully")
-    logger.info(f"   Account ID: {client.config.account_id}")
-    logger.info(f"   Chain ID: {client.config.chain_id}")
-    logger.info(f"   API URL: {client.config.api_url}")
-    logger.info(f"   Wallet: {client.wallet_address}")
-
+    await client.start()
     return client
+    
+async def main():
+    """Run comprehensive order testing asynchronously."""
+    print_separator("REYA TRADING API - COMPREHENSIVE ORDER ENTRY EXAMPLES")
+    logger.info("🚀 Starting comprehensive order testing...")
 
+    # Load environment variables
+    load_dotenv()
 
-async def temp(client: ReyaTradingClient):
-      # Collect order IDs for cancellation testing
-    all_order_ids = []
+    # Verify required environment variables
+    required_vars = ["PRIVATE_KEY", "ACCOUNT_ID"]
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
 
+    if missing_vars:
+        logger.error(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
+        logger.error("Please check your .env file and ensure all required variables are set.")
+        return
 
-    # Test 3: Stop Loss Orders
-    long_sl_id, short_sl_id = await stop_loss_orders(client)
-    all_order_ids.extend([long_sl_id, short_sl_id])
+    # Create a client instance with proper session management
+    async with ReyaTradingClient() as client:
+        logger.info("✅ Client initialized successfully")
+        logger.info(f"   Account ID: {client.config.account_id}")
+        logger.info(f"   Chain ID: {client.config.chain_id}")
+        logger.info(f"   API URL: {client.config.api_url}")
+        logger.info(f"   Wallet: {client.wallet_address}")
 
-    # Test 4: Take Profit Orders
-    long_tp_id, short_tp_id = await take_profit_orders(client)
-    all_order_ids.extend([long_tp_id, short_tp_id])
+        await client.start()
 
+        # Collect order IDs for cancellation testing
+        all_order_ids = []
 
-    # Test 6: Order Cancellation (optional)
-    # Uncomment the next line to test order cancellation
-    await order_cancellation(client, all_order_ids)
+        # # Test 1: IOC Limit Orders
+        # await run_ioc_limit_orders_test(client)
 
-    print_separator("TESTING COMPLETE")
-    logger.info("🎉 All order type tests completed!")
-    logger.info("💡 Review the logs above to see results for each order type.")
-    logger.info("📝 Note: Some orders may fail due to market conditions, insufficient balance, or other constraints.")
+        # # Test 2: GTC Limit Orders
+        # buy_limit_id, sell_limit_id = await run_gtc_limit_orders_test(client)
+        # all_order_ids.extend([buy_limit_id, sell_limit_id])
 
-# client =  create_client()
+        # # Test 3: Stop Loss Orders
+        # long_sl_id, short_sl_id = await run_stop_loss_orders_test(client)
+        # all_order_ids.extend([long_sl_id, short_sl_id])
 
-async def set_long_order(client):
-    result =  await gtc_limit_orders(client=client,market_id=4,is_buy=True,price="0.47",size="5000")
-    print(result)
+        # # Test 4: Take Profit Orders
+        # long_tp_id, short_tp_id = await run_take_profit_orders_test(client)
+        # all_order_ids.extend([long_tp_id, short_tp_id])
 
-async def set_short_order(client,market_id:int,price:str,size:str):
-    result =  await gtc_limit_orders(client=client,market_id=4,is_buy=True,price="0.47",size="5000")
-    print(result)
+        # # Test 5: Order Retrieval
+        # await run_order_retrieval_test(client)
 
+        # # Test 6: Order Cancellation (optional)
+        # # Uncomment the next line to test order cancellation
+        # await run_order_cancellation_test(client, all_order_ids)
+
+        print_separator("TESTING COMPLETE")
+        logger.info("🎉 All order type tests completed!")
+        logger.info("💡 Review the logs above to see results for each order type.")
+        logger.info(
+            "📝 Note: Some orders may fail due to market conditions, insufficient balance, or other constraints."
+        )
 
 
 if __name__ == "__main__":
-    client = asyncio.run(create_client())
-    order_id = asyncio.run(set_long_order(client))
-    print(order_id)
+    asyncio.run(main())

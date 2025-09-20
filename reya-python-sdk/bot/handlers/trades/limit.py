@@ -184,6 +184,7 @@ async def limit_confirmation(cb: CallbackQuery, state: FSMContext):
         is_buy = False
     result =  await gtc_limit_orders(client=client, market_name=ticker, is_buy=is_buy, price=str(price), size=str(amount))
     print(result)
+    await client.close()
     # Here you would add the logic to open the limit order using your trading API
     await cb.message.answer(f"✅ {side} limit order opened successfully!\nTicker: {ticker}\nAmount: {amount} tokens\nPrice: {price}\n{result}")
     await state.clear()
