@@ -115,7 +115,7 @@ async def limit_ticker(message: Message, state: FSMContext):
 async def limit_side(message: Message, state: FSMContext):
     try:
         side = message.text.strip().lower()
-        print(side)
+        # print(side)
         if side != "long" and side != "short":
             raise ValueError("side must long or short")
     except ValueError:
@@ -183,7 +183,7 @@ async def limit_confirmation(cb: CallbackQuery, state: FSMContext):
     else:
         is_buy = False
     result =  await gtc_limit_orders(client=client, market_name=ticker, is_buy=is_buy, price=str(price), size=str(amount))
-    print(result)
+    # print(result)
     await client.close()
     # Here you would add the logic to open the limit order using your trading API
     await cb.message.answer(f"✅ {side} limit order opened successfully!\nTicker: {ticker}\nAmount: {amount} tokens\nPrice: {price}\n{result}")

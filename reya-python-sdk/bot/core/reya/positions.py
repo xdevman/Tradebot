@@ -102,11 +102,11 @@ async def gtc_limit_orders(client: ReyaTradingClient,market_name: str, is_buy: b
     return order_response.order_id
 
 
-async def run_stop_loss_orders_test(client: ReyaTradingClient):
-    """Test Stop Loss orders asynchronously."""
-    print_separator("TESTING STOP LOSS ORDERS")
+async def stop_loss_orders(client: ReyaTradingClient,market_name:str, is_buy: bool, trigger_price_long: str, trigger_price_short: str):
+    """Stop Loss orders asynchronously."""
+    print_separator("STOP LOSS ORDERS")
 
-    # Test stop loss for long position (sell when price drops)
+    # Test stop loss for active position
     logger.info("Creating stop loss for long position...")
     response = await client.create_trigger_order(
         TriggerOrderParameters(
@@ -116,29 +116,18 @@ async def run_stop_loss_orders_test(client: ReyaTradingClient):
             trigger_type=OrderType.SL,
         )
     )
-    long_sl_response = handle_order_response("Stop Loss (Long Position)", response)
-
-    # Test stop loss for short position (buy when price rises)
-    logger.info("Creating stop loss for short position...")
-    response = await client.create_trigger_order(
-        TriggerOrderParameters(
-            symbol="ETHRUSDPERP",
-            is_buy=True,
-            trigger_px="9000",
-            trigger_type=OrderType.SL,
-        )
-    )
-    short_sl_response = handle_order_response("Stop Loss (Short Position)", response)
-
-    return long_sl_response.order_id, short_sl_response.order_id
+    sl_response = handle_order_response("Stop Loss", response)
 
 
-async def run_take_profit_orders_test(client: ReyaTradingClient):
-    """Test Take Profit orders asynchronously."""
+    return sl_response.order_id
+
+
+async def take_profit_orders(client: ReyaTradingClient):
+    """Take Profit orders asynchronously."""
     print_separator("TESTING TAKE PROFIT ORDERS")
 
-    # Test take profit for long position (sell when price rises)
-    logger.info("Creating take profit for long position...")
+    #Take profit for active position 
+    logger.info("Creating take profit for active position...")
     response = await client.create_trigger_order(
         TriggerOrderParameters(
             symbol="ETHRUSDPERP",
@@ -147,21 +136,9 @@ async def run_take_profit_orders_test(client: ReyaTradingClient):
             trigger_type=OrderType.TP,
         )
     )
-    long_tp_response = handle_order_response("Take Profit (Long Position)", response)
+    tp_response = handle_order_response("Take Profit", response)
 
-    # Test take profit for short position (buy when price drops)
-    logger.info("Creating take profit for short position...")
-    response = await client.create_trigger_order(
-        TriggerOrderParameters(
-            symbol="ETHRUSDPERP",
-            is_buy=True,
-            trigger_px="1500",
-            trigger_type=OrderType.TP,
-        )
-    )
-    short_tp_response = handle_order_response("Take Profit (Short Position)", response)
-
-    return long_tp_response.order_id, short_tp_response.order_id
+    return tp_response.order_id
 
 
 async def run_order_cancellation_test(client: ReyaTradingClient, order_ids: list):

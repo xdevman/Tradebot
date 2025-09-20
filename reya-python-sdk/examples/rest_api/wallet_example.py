@@ -41,35 +41,35 @@ async def main():
         # Show the wallet address we're using
         print(f"Using wallet address: {client.wallet_address}")
 
-        # Get open orders for the wallet
-        print("\n--- Getting open orders ---")
-        open_orders = await client.get_open_orders()
-        print(f"Open orders: {open_orders}")
+        # # Get open orders for the wallet
+        # print("\n--- Getting open orders ---")
+        # open_orders = await client.get_open_orders()
+        # print(f"Open orders: {open_orders}")
 
         # Get positions for the wallet
         print("\n--- Getting positions ---")
         positions = await client.get_positions()
         print(f"Positions: {positions}")
 
-        # Get account configuration
-        print("\n--- Getting account configuration ---")
-        config = await client.get_configuration()
-        print(f"Account configuration: {config}")
+        # # Get account configuration
+        # print("\n--- Getting account configuration ---")
+        # config = await client.get_configuration()
+        # print(f"Account configuration: {config}")
 
-        # Get trades
-        print("\n--- Getting perpetual executions ---")
-        trades = await client.get_perp_executions()
-        print(f"Trades: {trades}")
+        # # Get trades
+        # print("\n--- Getting perpetual executions ---")
+        # trades = await client.get_perp_executions()
+        # print(f"Trades: {trades}")
 
-        # Get accounts
-        print("\n--- Getting accounts ---")
-        accounts = await client.get_accounts()
-        print(f"Accounts: {accounts}")
+        # # Get accounts
+        # print("\n--- Getting accounts ---")
+        # accounts = await client.get_accounts()
+        # print(f"Accounts: {accounts}")
 
-        # Get account balances
-        print("\n--- Getting account balances ---")
-        balances = await client.get_account_balances()
-        print(f"Account balances: {balances}")
+        # # Get account balances
+        # print("\n--- Getting account balances ---")
+        # balances = await client.get_account_balances()
+        # print(f"Account balances: {balances}")
 
 
 if __name__ == "__main__":

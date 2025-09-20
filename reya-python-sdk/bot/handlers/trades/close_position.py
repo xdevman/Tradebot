@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from bot.core.reya.rapi import fetch_wallet_positions
-from bot.core.reya.trade_exec import trade_on_market
+from bot.core.reya.positions import ioc_market_orders, create_client
 from bot.keyboards.inline_confirm import confirm_keyboard
 from bot.states.trade_states import Close_States
 from bot.utils.postions_format import format_position, format_positions
@@ -105,13 +105,14 @@ async def close_confirmation(cb: CallbackQuery, state: FSMContext):
     amount = float(data.get("amount"))
     side = data.get("side")
     if side == "B":   # Long
-        amount = str(-amount)
+        is_buy = False
     elif side == "A":  # Short
-        amount = str(amount)
-
+        is_buy = True
+    client = await create_client()
     # Here you would add the logic to close the position using your trading API
-    result = trade_on_market(order_base=float(amount),market_name=ticker)
+    result = ioc_market_orders(order_base=str(amount),market_name=ticker,is_buy=is_buy)
     
     await cb.message.answer(f"✅ {ticker} position closed size : {amount}.\n result: {result}")
     await state.clear()
+    await client.close()
     return
