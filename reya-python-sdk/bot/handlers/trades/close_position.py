@@ -110,7 +110,7 @@ async def close_confirmation(cb: CallbackQuery, state: FSMContext):
         is_buy = True
     client = await create_client()
     # Here you would add the logic to close the position using your trading API
-    result = ioc_market_orders(order_base=str(amount),market_name=ticker,is_buy=is_buy)
+    result = await ioc_market_orders(client=client,order_base=str(amount),market_name=ticker,is_buy=is_buy)
     
     await cb.message.answer(f"✅ {ticker} position closed size : {amount}.\n result: {result}")
     await state.clear()

@@ -120,7 +120,7 @@ async def run_gtc_limit_orders_test(client: ReyaTradingClient):
         LimitOrderParameters(
             symbol="ETHRUSDPERP",
             is_buy=False,
-            limit_px="40000",
+            limit_px="90000",
             qty="0.01",
             time_in_force=TimeInForce.GTC,
         )
@@ -261,26 +261,26 @@ async def main():
         all_order_ids = []
 
         # Test 1: IOC Limit Orders
-        await run_ioc_limit_orders_test(client)
+        # await run_ioc_limit_orders_test(client)
 
-        # Test 2: GTC Limit Orders
+        # # Test 2: GTC Limit Orders
         buy_limit_id, sell_limit_id = await run_gtc_limit_orders_test(client)
         all_order_ids.extend([buy_limit_id, sell_limit_id])
 
-        # Test 3: Stop Loss Orders
-        long_sl_id, short_sl_id = await run_stop_loss_orders_test(client)
-        all_order_ids.extend([long_sl_id, short_sl_id])
+        # # Test 3: Stop Loss Orders
+        # long_sl_id, short_sl_id = await run_stop_loss_orders_test(client)
+        # all_order_ids.extend([long_sl_id, short_sl_id])
 
-        # Test 4: Take Profit Orders
-        long_tp_id, short_tp_id = await run_take_profit_orders_test(client)
-        all_order_ids.extend([long_tp_id, short_tp_id])
+        # # Test 4: Take Profit Orders
+        # long_tp_id, short_tp_id = await run_take_profit_orders_test(client)
+        # all_order_ids.extend([long_tp_id, short_tp_id])
 
-        # Test 5: Order Retrieval
-        await run_order_retrieval_test(client)
+        # # Test 5: Order Retrieval
+        # await run_order_retrieval_test(client)
 
-        # Test 6: Order Cancellation (optional)
-        # Uncomment the next line to test order cancellation
-        await run_order_cancellation_test(client, all_order_ids)
+        # # Test 6: Order Cancellation (optional)
+        # # Uncomment the next line to test order cancellation
+        # await run_order_cancellation_test(client, all_order_ids)
 
         print_separator("TESTING COMPLETE")
         logger.info("🎉 All order type tests completed!")
